@@ -1,6 +1,6 @@
 import {
     AmbientLight,
-    Color,
+    Color, FogExp2,
     Group,
     Mesh,
     MeshStandardMaterial,
@@ -16,6 +16,7 @@ import {Font} from "three/examples/jsm/loaders/FontLoader.js";
 const container = document.getElementById('container');
 const scene = new Scene();
 scene.background = new Color(0xbdbdbd);
+scene.fog = new FogExp2(0xbdbdbd, 0.0006);
 const group = new Group();
 scene.add(group);
 
