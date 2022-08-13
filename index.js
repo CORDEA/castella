@@ -1,5 +1,5 @@
 import {
-    AmbientLight,
+    AmbientLight, CircleGeometry,
     Color, FogExp2,
     Group,
     Mesh,
@@ -12,11 +12,12 @@ import {
 import {TTFLoader} from "three/examples/jsm/loaders/TTFLoader.js";
 import {TextGeometry} from "three/examples/jsm/geometries/TextGeometry.js";
 import {Font} from "three/examples/jsm/loaders/FontLoader.js";
+import {Reflector} from "three/examples/jsm/objects/Reflector.js";
 
 const container = document.getElementById('container');
 const scene = new Scene();
 scene.background = new Color(0xbdbdbd);
-scene.fog = new FogExp2(0xbdbdbd, 0.0006);
+scene.fog = new FogExp2(0xbdbdbd, 0.0004);
 const group = new Group();
 scene.add(group);
 
@@ -33,9 +34,14 @@ renderer.setPixelRatio(window.devicePixelRatio);
 renderer.setSize(window.innerWidth, window.innerHeight);
 container.appendChild(renderer.domElement);
 
+let mirror;
 window.addEventListener('resize', function () {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
+    mirror.getRenderTarget().setSize(
+        window.innerWidth * window.devicePixelRatio,
+        window.innerHeight * window.devicePixelRatio
+    );
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.render(scene, camera);
 });
@@ -65,6 +71,19 @@ loader.load('font.ttf', function (json) {
         .reduce((p, e) => p < e ? e : p, 0);
     const c = (max * nodes.length) * 1.1;
     const r = c / (2 * Math.PI);
+
+    const circle = new CircleGeometry(r, 128);
+    mirror = new Reflector(circle, {
+        clipBias: 0.003,
+        textureWidth: window.innerWidth * window.devicePixelRatio,
+        textureHeight: window.innerHeight * window.devicePixelRatio,
+        color: 0xbdbdbd
+    });
+    mirror.position.y = -400;
+    mirror.position.z = -r;
+    mirror.rotation.x = -Math.PI / 2;
+    scene.add(mirror);
+
     for (let i = 0; i < nodes.length; i++) {
         const node = nodes[i];
         node.center();
