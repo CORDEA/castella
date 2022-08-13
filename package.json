@@ -4,7 +4,7 @@
   "description": "",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "esbuild index.js --bundle --outfile=index.bundle.js"
+    "build": "esbuild index.js --bundle --outfile=index.bundle.js --external:fs"
   },
   "keywords": [],
   "author": "Yoshihiro Tanaka <contact@cordea.jp>",
