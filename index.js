@@ -1,4 +1,14 @@
-import {Color, Group, Mesh, MeshBasicMaterial, PerspectiveCamera, Scene, WebGLRenderer} from 'three';
+import {
+    AmbientLight,
+    Color,
+    Group,
+    Mesh,
+    MeshStandardMaterial,
+    PerspectiveCamera,
+    Scene,
+    SpotLight,
+    WebGLRenderer
+} from 'three';
 import {TTFLoader} from "three/examples/jsm/loaders/TTFLoader.js";
 import {TextGeometry} from "three/examples/jsm/geometries/TextGeometry.js";
 import {Font} from "three/examples/jsm/loaders/FontLoader.js";
@@ -10,7 +20,12 @@ const group = new Group();
 scene.add(group);
 
 const camera = new PerspectiveCamera(50, window.innerWidth / window.innerHeight);
-camera.position.set(0, 0, 1000);
+camera.position.set(0, 0, 800);
+
+scene.add(new AmbientLight(0xffffff, 0.1));
+const light = new SpotLight(0xffffff, 2);
+light.position.set(0, 200, 1000);
+scene.add(light);
 
 const renderer = new WebGLRenderer({antialias: true});
 renderer.setPixelRatio(window.devicePixelRatio);
@@ -36,8 +51,10 @@ loader.load('font.ttf', function (json) {
     text.computeVertexNormals();
 
     const center = -0.5 * (text.boundingBox.max.x - text.boundingBox.min.x);
-    const material = new MeshBasicMaterial({
-        color: 0xffffff
+    const material = new MeshStandardMaterial({
+        color: 0xc2185b,
+        metalness: 0.3,
+        roughness: 0.6
     });
     const mesh = new Mesh(text, material);
     mesh.position.x = center;
