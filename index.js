@@ -1,12 +1,14 @@
 import {
-    AmbientLight, CircleGeometry,
-    Color, FogExp2,
+    AmbientLight,
+    CircleGeometry,
+    Color,
+    FogExp2,
     Group,
     Mesh,
     MeshStandardMaterial,
     PerspectiveCamera,
+    PointLight,
     Scene,
-    SpotLight,
     WebGLRenderer
 } from 'three';
 import {TTFLoader} from "three/examples/jsm/loaders/TTFLoader.js";
@@ -22,11 +24,11 @@ const group = new Group();
 scene.add(group);
 
 const camera = new PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 5000);
-camera.position.set(0, 0, 800);
+camera.position.set(0, 0, 1000);
 
 scene.add(new AmbientLight(0xffffff, 0.1));
-const light = new SpotLight(0xffffff, 2);
-light.position.set(0, 200, 1000);
+const light = new PointLight(0xffffff);
+light.position.y = 300;
 scene.add(light);
 
 const renderer = new WebGLRenderer({antialias: true});
@@ -72,6 +74,7 @@ loader.load('font.ttf', function (json) {
     const c = (max * nodes.length) * 1.1;
     const r = c / (2 * Math.PI);
 
+    light.position.z = r;
     const circle = new CircleGeometry(r, 128);
     mirror = new Reflector(circle, {
         clipBias: 0.003,
