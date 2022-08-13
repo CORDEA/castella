@@ -19,7 +19,7 @@ scene.background = new Color(0xbdbdbd);
 const group = new Group();
 scene.add(group);
 
-const camera = new PerspectiveCamera(50, window.innerWidth / window.innerHeight);
+const camera = new PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 5000);
 camera.position.set(0, 0, 800);
 
 scene.add(new AmbientLight(0xffffff, 0.1));
@@ -42,24 +42,43 @@ window.addEventListener('resize', function () {
 const loader = new TTFLoader();
 loader.load('font.ttf', function (json) {
     const font = new Font(json);
-    const text = new TextGeometry('Hello World', {
-        font: font,
-        size: 70,
-        height: 10
+    let nodes = [
+        'Hello World',
+        'Hello World',
+        'Hello World',
+        'Hello World',
+        'Hello World',
+        'Hello World'
+    ].map(function (e) {
+        const geometry = new TextGeometry(e, {
+            font: font,
+            size: 70,
+            height: 10
+        });
+        geometry.computeBoundingBox();
+        geometry.computeVertexNormals();
+        return geometry;
     });
-    text.computeBoundingBox();
-    text.computeVertexNormals();
-
-    const center = -0.5 * (text.boundingBox.max.x - text.boundingBox.min.x);
-    const material = new MeshStandardMaterial({
-        color: 0xc2185b,
-        metalness: 0.3,
-        roughness: 0.6
-    });
-    const mesh = new Mesh(text, material);
-    mesh.position.x = center;
-    mesh.rotation.y = Math.PI / 6;
-    group.add(mesh);
-
+    const max = nodes
+        .map((e) => e.boundingBox.max.x - e.boundingBox.min.x)
+        .reduce((p, e) => p < e ? e : p, 0);
+    const c = (max * nodes.length) * 1.1;
+    const r = c / (2 * Math.PI);
+    for (let i = 0; i < nodes.length; i++) {
+        const node = nodes[i];
+        node.center();
+        const material = new MeshStandardMaterial({
+            color: 0xc2185b,
+            metalness: 0.3,
+            roughness: 0.6
+        });
+        const mesh = new Mesh(node, material);
+        mesh.position.z = -r;
+        const angle = Math.PI * 2 / nodes.length * i;
+        mesh.position.z += r * Math.cos(angle);
+        mesh.position.x += r * Math.sin(angle);
+        mesh.rotation.y = angle;
+        group.add(mesh);
+    }
     renderer.render(scene, camera);
 });
