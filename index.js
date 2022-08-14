@@ -21,6 +21,7 @@ import {Font} from "three/examples/jsm/loaders/FontLoader.js";
 import {Reflector} from "three/examples/jsm/objects/Reflector.js";
 import Stats from "three/examples/jsm/libs/stats.module.js";
 import {
+    Mat3,
     OBoxGeometry,
     RigidBody,
     RigidBodyConfig,
@@ -238,6 +239,7 @@ function giveBody(mesh, type) {
     const bodyConfig = new RigidBodyConfig();
     bodyConfig.type = type;
     bodyConfig.position = new Vec3(mesh.position.x, mesh.position.y, mesh.position.z);
+    bodyConfig.rotation = new Mat3().appendRotationEq(mesh.rotation.y, 0, 1, 0);
     const body = new RigidBody(bodyConfig);
     body.addShape(new Shape(shapeConfig));
     world.addRigidBody(body);
