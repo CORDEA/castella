@@ -18,6 +18,7 @@ import {TextGeometry} from "three/examples/jsm/geometries/TextGeometry.js";
 import {Font} from "three/examples/jsm/loaders/FontLoader.js";
 import {Reflector} from "three/examples/jsm/objects/Reflector.js";
 import {OimoPhysics} from "three/examples/jsm/physics/OimoPhysics.js";
+import Stats from "three/examples/jsm/libs/stats.module.js";
 
 const nodes = [
     {
@@ -46,7 +47,7 @@ const nodes = [
     },
 ];
 
-let scene, camera, group, font, light, mirror, renderer, physics;
+let scene, camera, group, font, light, mirror, renderer, physics, stats;
 
 async function init() {
     const container = document.getElementById('container');
@@ -70,6 +71,9 @@ async function init() {
     container.appendChild(renderer.domElement);
 
     physics = await OimoPhysics();
+
+    stats = new Stats();
+    container.appendChild(stats.dom);
 
     observeResize();
     const loader = new TTFLoader();
@@ -195,6 +199,7 @@ function createOuter(base) {
 function animate() {
     requestAnimationFrame(animate);
     renderer.render(scene, camera);
+    stats.update();
 }
 
 init();
