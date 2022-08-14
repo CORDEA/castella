@@ -49,20 +49,28 @@ const nodes = [
 
 let scene, camera, group, font, light, mirror, renderer, physics, stats;
 
+function textParam() {
+    return {
+        font: font,
+        size: 2,
+        height: 0.5
+    };
+}
+
 async function init() {
     const container = document.getElementById('container');
     scene = new Scene();
     scene.background = new Color(0xbdbdbd);
-    scene.fog = new FogExp2(0xbdbdbd, 0.0004);
+    scene.fog = new FogExp2(0xbdbdbd, 0.02);
     group = new Group();
     scene.add(group);
 
-    camera = new PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 5000);
-    camera.position.set(0, 0, 1000);
+    camera = new PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 500);
+    camera.position.set(0, 0, 20);
 
-    scene.add(new AmbientLight(0xffffff, 0.1));
-    light = new PointLight(0xffffff);
-    light.position.y = 300;
+    scene.add(new AmbientLight(0xffffff, 0.3));
+    light = new PointLight(0xffffff, 1.2);
+    light.position.y = 20;
     scene.add(light);
 
     renderer = new WebGLRenderer({antialias: true});
@@ -105,11 +113,7 @@ function addNodes() {
         roughness: 0.6
     });
     const geometries = nodes.map(function (e) {
-        const node = new TextGeometry(e.subject, {
-            font: font,
-            size: 70,
-            height: 10
-        });
+        const node = new TextGeometry(e.subject, textParam());
         node.computeBoundingBox();
         node.center();
         return node;
@@ -120,7 +124,7 @@ function addNodes() {
     const c = (max * nodes.length) * 1.1;
     const r = c / (2 * Math.PI);
 
-    light.position.z = r + 1000;
+    light.position.z = r + 15;
     addMirror(r);
 
     for (let i = 0; i < geometries.length; i++) {
@@ -138,14 +142,14 @@ function addNodes() {
 }
 
 function addMirror(radius) {
-    const circle = new CircleGeometry(radius, 128);
+    const circle = new CircleGeometry(radius, 64);
     mirror = new Reflector(circle, {
         clipBias: 0.003,
         textureWidth: window.innerWidth * window.devicePixelRatio,
         textureHeight: window.innerHeight * window.devicePixelRatio,
         color: 0xbdbdbd
     });
-    mirror.position.y = -400;
+    mirror.position.y = -10;
     mirror.position.z = -radius;
     mirror.rotation.x = -Math.PI / 2;
     scene.add(mirror);
@@ -154,11 +158,7 @@ function addMirror(radius) {
 
 function addContent(index) {
     const first = group.children[0];
-    const node = new TextGeometry(nodes[index].content, {
-        font: font,
-        size: 70,
-        height: 10
-    });
+    const node = new TextGeometry(nodes[index].content, textParam());
     node.computeBoundingBox();
     node.center();
     const material = new MeshStandardMaterial({
@@ -170,7 +170,7 @@ function addContent(index) {
     const outer = createOuter(mesh);
     outer.position.set(
         first.position.x,
-        first.position.y + 400,
+        first.position.y + 15,
         first.position.z
     );
     group.add(outer);
