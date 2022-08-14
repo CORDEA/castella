@@ -47,7 +47,8 @@ const nodes = [
     },
 ];
 
-let scene, camera, group, font, light, mirror, renderer, physics, stats;
+let scene, camera, subjects, contents, font, light, mirror, renderer, physics, stats;
+let index = 0;
 
 function textParam() {
     return {
@@ -62,11 +63,14 @@ async function init() {
     scene = new Scene();
     scene.background = new Color(0xbdbdbd);
     scene.fog = new FogExp2(0xbdbdbd, 0.02);
-    group = new Group();
-    scene.add(group);
+    subjects = new Group();
+    contents = new Group();
+    scene.add(subjects);
+    scene.add(contents);
 
     camera = new PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 500);
-    camera.position.set(0, 0, 20);
+    camera.position.set(0, 5, 30);
+    camera.lookAt(0, 0, 0);
 
     scene.add(new AmbientLight(0xffffff, 0.3));
     light = new PointLight(0xffffff, 1.2);
@@ -84,11 +88,11 @@ async function init() {
     container.appendChild(stats.dom);
 
     observeResize();
+    observeEvents(container);
     const loader = new TTFLoader();
     loader.load('font.ttf', function (json) {
         font = new Font(json);
         addNodes();
-        addContent(0);
         animate();
     });
 }
@@ -106,14 +110,21 @@ function observeResize() {
     });
 }
 
+function observeEvents(e) {
+    e.addEventListener('click', function () {
+        index += 1;
+    });
+}
+
 function addNodes() {
     const material = new MeshStandardMaterial({
         color: 0xc2185b,
         metalness: 0.3,
         roughness: 0.6
     });
+    const param = textParam();
     const geometries = nodes.map(function (e) {
-        const node = new TextGeometry(e.subject, textParam());
+        const node = new TextGeometry(e.subject, param);
         node.computeBoundingBox();
         node.center();
         return node;
@@ -125,8 +136,9 @@ function addNodes() {
     const r = c / (2 * Math.PI);
 
     light.position.z = r + 15;
-    addMirror(r);
-    addStage(r);
+    const padding = param.height * 2 + 3;
+    addMirror(r, padding);
+    addStage(r, padding);
 
     for (let i = 0; i < geometries.length; i++) {
         const node = geometries[i];
@@ -137,41 +149,49 @@ function addNodes() {
         const outer = createOuter(mesh);
         outer.position.set(x, 0, z);
         outer.rotation.y = angle;
-        group.add(outer);
-        physics.addMesh(outer);
+        subjects.add(outer);
     }
 }
 
-function addMirror(radius) {
-    const circle = new CircleGeometry(radius, 64);
+function addMirror(radius, padding) {
+    const circle = new CircleGeometry(radius + padding, 64);
     mirror = new Reflector(circle, {
         clipBias: 0.003,
         textureWidth: window.innerWidth * window.devicePixelRatio,
         textureHeight: window.innerHeight * window.devicePixelRatio,
         color: 0xbdbdbd
     });
-    mirror.position.y = -10;
+    mirror.position.y = -5;
     mirror.position.z = -radius;
     mirror.rotation.x = -Math.PI / 2;
     scene.add(mirror);
-    physics.addMesh(mirror);
 }
 
-function addStage(radius) {
-    const height = 10;
-    const cylinder = new CylinderGeometry(radius, radius, height, 64);
+function addStage(radius, padding) {
+    const height = 20;
+    const r = radius + padding;
+    const cylinder = new CylinderGeometry(r, r, height, 64);
     const material = new MeshBasicMaterial({
         color: 0xffffff,
     });
     const mesh = new Mesh(cylinder, material);
-    mesh.position.y = -(10.5 + height / 2);
-    mesh.position.z = -radius;
-    scene.add(mesh);
-    physics.addMesh(mesh);
+    const outer = new BoxGeometry(r * 2, height, r * 2);
+    const outerMesh = new Mesh(
+        outer,
+        new MeshBasicMaterial({
+            opacity: 0,
+            transparent: true
+        }),
+    );
+    outerMesh.add(mesh);
+    outerMesh.position.y = -(5.01 + height / 2);
+    outerMesh.position.z = -radius;
+    scene.add(outerMesh);
+    physics.addMesh(outerMesh);
 }
 
-function addContent(index) {
-    const first = group.children[0];
+function createContent(index) {
+    const first = subjects.children[0];
     const node = new TextGeometry(nodes[index].content, textParam());
     node.computeBoundingBox();
     node.center();
@@ -187,9 +207,7 @@ function addContent(index) {
         first.position.y + 15,
         first.position.z
     );
-    group.add(outer);
-    physics.addMesh(outer, 1);
-    physics.setMeshPosition(outer, outer.position);
+    return outer;
 }
 
 function createOuter(base) {
@@ -197,7 +215,7 @@ function createOuter(base) {
     const outer = new BoxGeometry(
         box.max.x - box.min.x,
         box.max.y - box.min.y,
-        10
+        box.max.z - box.min.z
     );
     const outerMesh = new Mesh(
         outer,
@@ -212,6 +230,13 @@ function createOuter(base) {
 
 function animate() {
     requestAnimationFrame(animate);
+    if (index > 0 && contents.children.length < index) {
+        const subject = subjects.children[index - 1];
+        const content = createContent(index - 1);
+        contents.add(content);
+        physics.addMesh(subject, 1);
+        physics.addMesh(content, 1);
+    }
     renderer.render(scene, camera);
     stats.update();
 }
