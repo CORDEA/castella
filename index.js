@@ -2,7 +2,7 @@ import {
     AmbientLight,
     BoxGeometry,
     CircleGeometry,
-    Color,
+    Color, CylinderGeometry,
     FogExp2,
     Group,
     Mesh,
@@ -126,6 +126,7 @@ function addNodes() {
 
     light.position.z = r + 15;
     addMirror(r);
+    addStage(r);
 
     for (let i = 0; i < geometries.length; i++) {
         const node = geometries[i];
@@ -154,6 +155,19 @@ function addMirror(radius) {
     mirror.rotation.x = -Math.PI / 2;
     scene.add(mirror);
     physics.addMesh(mirror);
+}
+
+function addStage(radius) {
+    const height = 10;
+    const cylinder = new CylinderGeometry(radius, radius, height, 64);
+    const material = new MeshBasicMaterial({
+        color: 0xffffff,
+    });
+    const mesh = new Mesh(cylinder, material);
+    mesh.position.y = -(10.5 + height / 2);
+    mesh.position.z = -radius;
+    scene.add(mesh);
+    physics.addMesh(mesh);
 }
 
 function addContent(index) {
