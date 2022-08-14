@@ -58,9 +58,15 @@ const nodes = [
     },
 ];
 
+const STATE_CONTENT_DROP = 0;
+const STATE_CONTENT_DROPPED = 1;
+const STATE_SUBJECT_DROP = 2;
+const STATE_SUBJECT_DROPPED = 3;
+
 let scene, camera, world, clock, subjects, contents, font, light, mirror, renderer, stats;
 let bodies = new WeakMap();
-let index = 0;
+let index = -1;
+let state = STATE_SUBJECT_DROPPED;
 
 function textParam() {
     return {
@@ -106,25 +112,6 @@ function init() {
         font = new Font(json);
         addNodes();
         animate();
-    });
-}
-
-function observeResize() {
-    window.addEventListener('resize', function () {
-        camera.aspect = window.innerWidth / window.innerHeight;
-        camera.updateProjectionMatrix();
-        mirror.getRenderTarget().setSize(
-            window.innerWidth * window.devicePixelRatio,
-            window.innerHeight * window.devicePixelRatio
-        );
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.render(scene, camera);
-    });
-}
-
-function observeEvents(e) {
-    e.addEventListener('click', function () {
-        index += 1;
     });
 }
 
@@ -200,6 +187,7 @@ function addStage(radius, padding) {
     outerMesh.position.y = -(5.01 + height / 2);
     outerMesh.position.z = -radius;
     scene.add(outerMesh);
+    giveBody(outerMesh, RigidBodyType.STATIC);
 }
 
 function createContent(index) {
@@ -256,6 +244,31 @@ function giveBody(mesh, type) {
     bodies.set(mesh, body);
 }
 
+function observeResize() {
+    window.addEventListener('resize', function () {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        mirror.getRenderTarget().setSize(
+            window.innerWidth * window.devicePixelRatio,
+            window.innerHeight * window.devicePixelRatio
+        );
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.render(scene, camera);
+    });
+}
+
+function observeEvents(e) {
+    e.addEventListener('click', function () {
+        if (state === STATE_SUBJECT_DROPPED) {
+            index += 1;
+            state = STATE_CONTENT_DROP;
+        }
+        if (state === STATE_CONTENT_DROPPED) {
+            state = STATE_SUBJECT_DROP;
+        }
+    });
+}
+
 function animate() {
     requestAnimationFrame(animate);
     const delta = clock.getDelta();
@@ -267,10 +280,18 @@ function animate() {
         child.position.copy(body.getPosition());
         child.quaternion.copy(body.getOrientation());
     }
-    if (index > 0 && contents.children.length < index) {
-        const content = createContent(index - 1);
-        giveBody(content, RigidBodyType.DYNAMIC);
-        contents.add(content);
+    switch (state) {
+        case STATE_CONTENT_DROP:
+            const content = createContent(index);
+            contents.add(content);
+            giveBody(content, RigidBodyType.DYNAMIC);
+            state = STATE_CONTENT_DROPPED;
+            break;
+        case STATE_SUBJECT_DROP:
+            const subject = subjects.children[index];
+            bodies.get(subject).setType(RigidBodyType.DYNAMIC);
+            state = STATE_SUBJECT_DROPPED;
+            break;
     }
     renderer.render(scene, camera);
     stats.update();
