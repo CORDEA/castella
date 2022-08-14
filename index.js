@@ -2,7 +2,9 @@ import {
     AmbientLight,
     BoxGeometry,
     CircleGeometry,
-    Color, CylinderGeometry,
+    Clock,
+    Color,
+    CylinderGeometry,
     FogExp2,
     Group,
     Mesh,
@@ -17,8 +19,17 @@ import {TTFLoader} from "three/examples/jsm/loaders/TTFLoader.js";
 import {TextGeometry} from "three/examples/jsm/geometries/TextGeometry.js";
 import {Font} from "three/examples/jsm/loaders/FontLoader.js";
 import {Reflector} from "three/examples/jsm/objects/Reflector.js";
-import {OimoPhysics} from "three/examples/jsm/physics/OimoPhysics.js";
 import Stats from "three/examples/jsm/libs/stats.module.js";
+import {
+    OBoxGeometry,
+    RigidBody,
+    RigidBodyConfig,
+    RigidBodyType,
+    Shape,
+    ShapeConfig,
+    Vec3,
+    World
+} from "three/examples/jsm/libs/OimoPhysics/index.js";
 
 const nodes = [
     {
@@ -47,7 +58,8 @@ const nodes = [
     },
 ];
 
-let scene, camera, subjects, contents, font, light, mirror, renderer, physics, stats;
+let scene, camera, world, clock, subjects, contents, font, light, mirror, renderer, stats;
+let bodies = new WeakMap();
 let index = 0;
 
 function textParam() {
@@ -58,7 +70,7 @@ function textParam() {
     };
 }
 
-async function init() {
+function init() {
     const container = document.getElementById('container');
     scene = new Scene();
     scene.background = new Color(0xbdbdbd);
@@ -82,8 +94,8 @@ async function init() {
     renderer.setSize(window.innerWidth, window.innerHeight);
     container.appendChild(renderer.domElement);
 
-    physics = await OimoPhysics();
-
+    world = new World();
+    clock = new Clock();
     stats = new Stats();
     container.appendChild(stats.dom);
 
@@ -150,6 +162,7 @@ function addNodes() {
         outer.position.set(x, 0, z);
         outer.rotation.y = angle;
         subjects.add(outer);
+        giveBody(outer, RigidBodyType.STATIC);
     }
 }
 
@@ -187,7 +200,6 @@ function addStage(radius, padding) {
     outerMesh.position.y = -(5.01 + height / 2);
     outerMesh.position.z = -radius;
     scene.add(outerMesh);
-    physics.addMesh(outerMesh);
 }
 
 function createContent(index) {
@@ -228,14 +240,37 @@ function createOuter(base) {
     return outerMesh;
 }
 
+function giveBody(mesh, type) {
+    const param = mesh.geometry.parameters;
+    const geometry = new OBoxGeometry(
+        new Vec3(param.width / 2, param.height / 2, param.depth / 2)
+    );
+    const shapeConfig = new ShapeConfig();
+    shapeConfig.geometry = geometry;
+    const bodyConfig = new RigidBodyConfig();
+    bodyConfig.type = type;
+    bodyConfig.position = new Vec3(mesh.position.x, mesh.position.y, mesh.position.z);
+    const body = new RigidBody(bodyConfig);
+    body.addShape(new Shape(shapeConfig));
+    world.addRigidBody(body);
+    bodies.set(mesh, body);
+}
+
 function animate() {
     requestAnimationFrame(animate);
+    const delta = clock.getDelta();
+    if (delta > 0) {
+        world.step(delta);
+    }
+    for (const child of subjects.children.concat(contents.children)) {
+        const body = bodies.get(child);
+        child.position.copy(body.getPosition());
+        child.quaternion.copy(body.getOrientation());
+    }
     if (index > 0 && contents.children.length < index) {
-        const subject = subjects.children[index - 1];
         const content = createContent(index - 1);
+        giveBody(content, RigidBodyType.DYNAMIC);
         contents.add(content);
-        physics.addMesh(subject, 1);
-        physics.addMesh(content, 1);
     }
     renderer.render(scene, camera);
     stats.update();
