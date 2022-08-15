@@ -77,7 +77,7 @@ const STATE_END = 5;
 
 const interpolator = new Interpolator(40);
 
-let scene, camera, world, clock, subjects, contents, stage, roof, font, mirror, renderer, stats, radius;
+let scene, camera, world, clock, subjects, contents, stage, roof, cord, font, mirror, renderer, stats, radius;
 let lights, lightHelpers;
 let bodies = new WeakMap();
 let index = -1;
@@ -222,16 +222,6 @@ function createRoof() {
 function addCord() {
     const buffer = new BufferGeometry();
     buffer.setAttribute(
-        'position',
-        new Float32BufferAttribute(
-            [
-                0, 30, -radius,
-                0, -8, -radius
-            ],
-            3
-        )
-    );
-    buffer.setAttribute(
         'color',
         new Float32BufferAttribute(
             [
@@ -242,8 +232,8 @@ function addCord() {
         )
     );
     const material = new LineBasicMaterial({vertexColors: true});
-    const mesh = new Line(buffer, material);
-    scene.add(mesh);
+    cord = new Line(buffer, material);
+    scene.add(cord);
 }
 
 function createContent(index) {
@@ -339,6 +329,16 @@ function animate() {
         child.position.copy(body.getPosition());
         child.quaternion.copy(body.getOrientation());
     }
+    cord.geometry.setAttribute(
+        'position',
+        new Float32BufferAttribute(
+            [
+                roof.position.x, roof.position.y, roof.position.z,
+                stage.position.x, stage.position.y, stage.position.z
+            ],
+            3
+        ),
+    );
     switch (state) {
         case STATE_CONTENT_DROP:
             const content = createContent(index);
