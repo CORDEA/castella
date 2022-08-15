@@ -1,12 +1,16 @@
 import {
     AmbientLight,
     BoxGeometry,
+    BufferGeometry,
     CircleGeometry,
     Clock,
     Color,
     CylinderGeometry,
+    Float32BufferAttribute,
     FogExp2,
     Group,
+    Line,
+    LineBasicMaterial,
     Mesh,
     MeshBasicMaterial,
     MeshStandardMaterial,
@@ -29,6 +33,8 @@ import {
     RigidBodyType,
     Shape,
     ShapeConfig,
+    SphericalJoint,
+    SphericalJointConfig,
     Vec3,
     World
 } from "three/examples/jsm/libs/OimoPhysics/index.js";
@@ -67,7 +73,7 @@ const STATE_SUBJECT_DROPPED = 3;
 const STATE_SUBJECT_ROTATED = 4;
 const STATE_END = 5;
 
-let scene, camera, world, clock, subjects, contents, font, mirror, renderer, stats, radius;
+let scene, camera, world, clock, subjects, contents, stage, roof, font, mirror, renderer, stats, radius;
 let lights, lightHelpers;
 let bodies = new WeakMap();
 let index = -1;
@@ -150,8 +156,14 @@ function addNodes() {
 
     lights.forEach((e) => e.position.z = radius);
     const padding = param.height * 2 + 3;
-    addMirror(radius, padding);
-    addStage(radius, padding);
+    stage = createStage(padding);
+    roof = createRoof();
+    addCord();
+    scene.add(stage);
+    scene.add(roof);
+    giveBody(stage, RigidBodyType.DYNAMIC);
+    giveBody(roof, RigidBodyType.STATIC);
+    giveJoint(stage, roof);
 
     for (let i = 0; i < geometries.length; i++) {
         const node = geometries[i];
@@ -166,42 +178,68 @@ function addNodes() {
     }
 }
 
-function addMirror(radius, padding) {
-    const circle = new CircleGeometry(radius + padding, 64);
+function createStage(padding) {
+    const height = 0.5;
+    const r = radius + padding;
+    const cylinder = new CylinderGeometry(r, r, height, 64);
+    cylinder.computeBoundingBox();
+    const material = new MeshBasicMaterial({
+        color: 0x212121
+    });
+    const mesh = new Mesh(cylinder, material);
+    const circle = new CircleGeometry(r, 64);
     mirror = new Reflector(circle, {
         clipBias: 0.003,
         textureWidth: window.innerWidth * window.devicePixelRatio,
         textureHeight: window.innerHeight * window.devicePixelRatio,
         color: 0xe0e0e0
     });
-    mirror.position.y = -5;
-    mirror.position.z = -radius;
+    mirror.position.y = height / 2 + 0.01;
     mirror.rotation.x = -Math.PI / 2;
-    scene.add(mirror);
+    mesh.add(mirror);
+
+    mesh.position.y = -8;
+    mesh.position.z = -radius;
+    return mesh;
 }
 
-function addStage(radius, padding) {
-    const height = 0.5;
-    const r = radius + padding;
-    const cylinder = new CylinderGeometry(r, r, height, 64);
-    cylinder.computeBoundingBox();
+function createRoof() {
+    const box = new BoxGeometry(1, 1, 1);
     const material = new MeshBasicMaterial({
-        color: 0x212121,
+        color: 0x000000
     });
-    const mesh = new Mesh(cylinder, material);
-    const outer = new BoxGeometry(r * 2, height, r * 2);
-    const outerMesh = new Mesh(
-        outer,
-        new MeshBasicMaterial({
-            opacity: 0,
-            transparent: true
-        }),
-    );
-    outerMesh.add(mesh);
-    mesh.position.y = -(5.01 + height / 2);
+    box.computeBoundingBox();
+    const mesh = new Mesh(box, material);
+    mesh.position.y = 50;
     mesh.position.z = -radius;
+    return mesh;
+}
+
+function addCord() {
+    const buffer = new BufferGeometry();
+    buffer.setAttribute(
+        'position',
+        new Float32BufferAttribute(
+            [
+                0, 30, -radius,
+                0, -8, -radius
+            ],
+            3
+        )
+    );
+    buffer.setAttribute(
+        'color',
+        new Float32BufferAttribute(
+            [
+                1, 1, 1,
+                0, 0, 0
+            ],
+            3
+        )
+    );
+    const material = new LineBasicMaterial({vertexColors: true});
+    const mesh = new Line(buffer, material);
     scene.add(mesh);
-    giveBody(mesh, RigidBodyType.STATIC);
 }
 
 function createContent(index) {
@@ -248,6 +286,19 @@ function giveBody(mesh, type) {
     bodies.set(mesh, body);
 }
 
+function giveJoint(mesh1, mesh2) {
+    const body1 = bodies.get(mesh1);
+    const body2 = bodies.get(mesh2);
+    const config = new SphericalJointConfig();
+    config.init(
+        body1,
+        body2,
+        body1.getPosition().add(body2.getPosition()).scale(0.5)
+    )
+    const joint = new SphericalJoint(config);
+    world.addJoint(joint);
+}
+
 function observeResize() {
     window.addEventListener('resize', function () {
         camera.aspect = window.innerWidth / window.innerHeight;
@@ -279,7 +330,7 @@ function animate() {
     if (delta > 0) {
         world.step(delta);
     }
-    for (const child of subjects.children.concat(contents.children)) {
+    for (const child of subjects.children.concat(contents.children).concat([stage, roof])) {
         const body = bodies.get(child);
         child.position.copy(body.getPosition());
         child.quaternion.copy(body.getOrientation());
