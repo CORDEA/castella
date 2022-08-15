@@ -66,6 +66,17 @@ const nodes = [
         content: 'Hello World',
     },
 ];
+const colors = {
+    background: 0xeeeeee,
+    fog: 0x757575,
+    light: 0xffffff,
+    stage: 0x90a4ae,
+    text: 0xc51162,
+    cord: [
+        0, 0, 0,
+        1, 0, 0
+    ]
+};
 const angle = Math.PI * 2 / nodes.length;
 
 const STATE_CONTENT_DROP = 0;
@@ -94,8 +105,8 @@ function textParam() {
 function init() {
     const container = document.getElementById('container');
     scene = new Scene();
-    scene.background = new Color(0x212121);
-    scene.fog = new FogExp2(0x263238, 0.02);
+    scene.background = new Color(colors.background);
+    scene.fog = new FogExp2(colors.fog, 0.02);
     subjects = new Group();
     contents = new Group();
     scene.add(subjects);
@@ -105,7 +116,7 @@ function init() {
     camera.position.set(0, 5, 40);
     camera.lookAt(0, 0, 0);
 
-    scene.add(new AmbientLight(0xffffff, 0.1));
+    scene.add(new AmbientLight(colors.light, 0.1));
     lights = [createLight(4), createLight(0), createLight(-4)];
     lightHelpers = lights.map((e) => new SpotLightHelper(e));
     lights.forEach((e) => scene.add(e));
@@ -132,7 +143,7 @@ function init() {
 }
 
 function createLight(x) {
-    const light = new SpotLight(0xffffff, 0.7);
+    const light = new SpotLight(colors.light, 0.7);
     light.penumbra = 0.3;
     light.angle = Math.PI / 6;
     light.position.set(x, 8, 0);
@@ -141,7 +152,7 @@ function createLight(x) {
 
 function addNodes() {
     const material = new MeshStandardMaterial({
-        color: 0xc2185b,
+        color: colors.text,
         metalness: 0.3,
         roughness: 0.6
     });
@@ -188,7 +199,7 @@ function createStage(padding) {
     const cylinder = new CylinderGeometry(r, r, height, 64);
     cylinder.computeBoundingBox();
     const material = new MeshBasicMaterial({
-        color: 0x212121
+        color: colors.stage
     });
     const mesh = new Mesh(cylinder, material);
     const circle = new CircleGeometry(r, 64);
@@ -196,7 +207,7 @@ function createStage(padding) {
         clipBias: 0.003,
         textureWidth: window.innerWidth * window.devicePixelRatio,
         textureHeight: window.innerHeight * window.devicePixelRatio,
-        color: 0xe0e0e0
+        color: colors.stage
     });
     mirror.position.y = height / 2 + 0.01;
     mirror.rotation.x = -Math.PI / 2;
@@ -214,7 +225,7 @@ function createRoof() {
     });
     box.computeBoundingBox();
     const mesh = new Mesh(box, material);
-    mesh.position.y = 50;
+    mesh.position.y = 25;
     mesh.position.z = -radius;
     return mesh;
 }
@@ -224,10 +235,7 @@ function addCord() {
     buffer.setAttribute(
         'color',
         new Float32BufferAttribute(
-            [
-                1, 1, 1,
-                0, 0, 0
-            ],
+            colors.cord,
             3
         )
     );
@@ -242,7 +250,7 @@ function createContent(index) {
     node.computeBoundingBox();
     node.center();
     const material = new MeshStandardMaterial({
-        color: 0xc2185b,
+        color: colors.text,
         metalness: 0.3,
         roughness: 0.6
     });
