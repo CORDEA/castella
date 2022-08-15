@@ -159,11 +159,10 @@ function addNodes() {
         const z = radius * Math.cos(angle) - radius;
         const x = radius * Math.sin(angle);
         const mesh = new Mesh(node, material);
-        const outer = createOuter(mesh);
-        outer.position.set(x, 0, z);
-        outer.rotation.y = angle;
-        subjects.add(outer);
-        giveBody(outer, RigidBodyType.STATIC);
+        mesh.position.set(x, 0, z);
+        mesh.rotation.y = angle;
+        subjects.add(mesh);
+        giveBody(mesh, RigidBodyType.STATIC);
     }
 }
 
@@ -185,6 +184,7 @@ function addStage(radius, padding) {
     const height = 20;
     const r = radius + padding;
     const cylinder = new CylinderGeometry(r, r, height, 64);
+    cylinder.computeBoundingBox();
     const material = new MeshBasicMaterial({
         color: 0xffffff,
     });
@@ -198,10 +198,10 @@ function addStage(radius, padding) {
         }),
     );
     outerMesh.add(mesh);
-    outerMesh.position.y = -(5.01 + height / 2);
-    outerMesh.position.z = -radius;
-    scene.add(outerMesh);
-    giveBody(outerMesh, RigidBodyType.STATIC);
+    mesh.position.y = -(5.01 + height / 2);
+    mesh.position.z = -radius;
+    scene.add(mesh);
+    giveBody(mesh, RigidBodyType.STATIC);
 }
 
 function createContent(index) {
@@ -215,44 +215,32 @@ function createContent(index) {
         roughness: 0.6
     });
     const mesh = new Mesh(node, material);
-    const outer = createOuter(mesh);
-    outer.position.set(
+    mesh.position.set(
         subject.position.x,
         subject.position.y + 15,
         subject.position.z
     );
-    return outer;
-}
-
-function createOuter(base) {
-    const box = base.geometry.boundingBox;
-    const outer = new BoxGeometry(
-        box.max.x - box.min.x,
-        box.max.y - box.min.y,
-        box.max.z - box.min.z
-    );
-    const outerMesh = new Mesh(
-        outer,
-        new MeshBasicMaterial({
-            opacity: 0,
-            transparent: true
-        }),
-    );
-    outerMesh.add(base);
-    return outerMesh;
+    return mesh;
 }
 
 function giveBody(mesh, type) {
-    const param = mesh.geometry.parameters;
+    const box = mesh.geometry.boundingBox;
     const geometry = new OBoxGeometry(
-        new Vec3(param.width / 2, param.height / 2, param.depth / 2)
+        new Vec3(
+            (box.max.x - box.min.x) / 2,
+            (box.max.y - box.min.y) / 2,
+            (box.max.z - box.min.z) / 2
+        )
     );
     const shapeConfig = new ShapeConfig();
     shapeConfig.geometry = geometry;
     const bodyConfig = new RigidBodyConfig();
     bodyConfig.type = type;
     bodyConfig.position = new Vec3(mesh.position.x, mesh.position.y, mesh.position.z);
-    bodyConfig.rotation = new Mat3().appendRotationEq(mesh.rotation.y, 0, 1, 0);
+    bodyConfig.rotation = new Mat3()
+        .appendRotationEq(mesh.rotation.x, 1, 0, 0)
+        .appendRotationEq(mesh.rotation.y, 0, 1, 0)
+        .appendRotationEq(mesh.rotation.z, 0, 0, 1);
     const body = new RigidBody(bodyConfig);
     body.addShape(new Shape(shapeConfig));
     world.addRigidBody(body);
