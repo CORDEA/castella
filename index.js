@@ -63,11 +63,13 @@ const STATE_CONTENT_DROP = 0;
 const STATE_CONTENT_DROPPED = 1;
 const STATE_SUBJECT_DROP = 2;
 const STATE_SUBJECT_DROPPED = 3;
+const STATE_SUBJECT_ROTATED = 4;
+const STATE_END = 5;
 
-let scene, camera, world, clock, subjects, contents, font, light, mirror, renderer, stats;
+let scene, camera, world, clock, subjects, contents, font, light, mirror, renderer, stats, radius;
 let bodies = new WeakMap();
 let index = -1;
-let state = STATE_SUBJECT_DROPPED;
+let state = STATE_SUBJECT_ROTATED;
 
 function textParam() {
     return {
@@ -133,18 +135,18 @@ function addNodes() {
         .map((e) => e.boundingBox.max.x - e.boundingBox.min.x)
         .reduce((p, e) => p < e ? e : p, 0);
     const c = (max * nodes.length) * 1.1;
-    const r = c / (2 * Math.PI);
+    radius = c / (2 * Math.PI);
 
-    light.position.z = r + 15;
+    light.position.z = radius + 15;
     const padding = param.height * 2 + 3;
-    addMirror(r, padding);
-    addStage(r, padding);
+    addMirror(radius, padding);
+    addStage(radius, padding);
 
     for (let i = 0; i < geometries.length; i++) {
         const node = geometries[i];
         const angle = Math.PI * 2 / nodes.length * i;
-        const z = r * Math.cos(angle) - r;
-        const x = r * Math.sin(angle);
+        const z = radius * Math.cos(angle) - radius;
+        const x = radius * Math.sin(angle);
         const mesh = new Mesh(node, material);
         const outer = createOuter(mesh);
         outer.position.set(x, 0, z);
@@ -192,7 +194,7 @@ function addStage(radius, padding) {
 }
 
 function createContent(index) {
-    const first = subjects.children[0];
+    const subject = subjects.children[index];
     const node = new TextGeometry(nodes[index].content, textParam());
     node.computeBoundingBox();
     node.center();
@@ -204,9 +206,9 @@ function createContent(index) {
     const mesh = new Mesh(node, material);
     const outer = createOuter(mesh);
     outer.position.set(
-        first.position.x,
-        first.position.y + 15,
-        first.position.z
+        subject.position.x,
+        subject.position.y + 15,
+        subject.position.z
     );
     return outer;
 }
@@ -261,7 +263,7 @@ function observeResize() {
 
 function observeEvents(e) {
     e.addEventListener('click', function () {
-        if (state === STATE_SUBJECT_DROPPED) {
+        if (state === STATE_SUBJECT_ROTATED) {
             index += 1;
             state = STATE_CONTENT_DROP;
         }
@@ -292,7 +294,28 @@ function animate() {
         case STATE_SUBJECT_DROP:
             const subject = subjects.children[index];
             bodies.get(subject).setType(RigidBodyType.DYNAMIC);
-            state = STATE_SUBJECT_DROPPED;
+            if (index >= nodes.length - 1) {
+                state = STATE_END;
+            } else {
+                state = STATE_SUBJECT_DROPPED;
+            }
+            break;
+        case STATE_SUBJECT_DROPPED:
+            const front = subjects.children[index + 1];
+            if (front.rotation.y > 0) {
+                for (const child of subjects.children.slice(index + 1)) {
+                    const body = bodies.get(child)
+                    const mat = body
+                        .getRotation()
+                        .appendRotationEq(-0.01, 0, 1, 0);
+                    const z = radius * mat.e00 - radius;
+                    const x = radius * mat.e02;
+                    body.setPosition(new Vec3(x, 0, z));
+                    body.setRotation(mat);
+                }
+            } else {
+                state = STATE_SUBJECT_ROTATED;
+            }
             break;
     }
     renderer.render(scene, camera);
