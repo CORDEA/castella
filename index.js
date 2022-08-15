@@ -38,6 +38,7 @@ import {
     Vec3,
     World
 } from "three/examples/jsm/libs/OimoPhysics/index.js";
+import {Interpolator} from './interpolator';
 
 const nodes = [
     {
@@ -65,6 +66,7 @@ const nodes = [
         content: 'Hello World',
     },
 ];
+const angle = Math.PI * 2 / nodes.length;
 
 const STATE_CONTENT_DROP = 0;
 const STATE_CONTENT_DROPPED = 1;
@@ -72,6 +74,8 @@ const STATE_SUBJECT_DROP = 2;
 const STATE_SUBJECT_DROPPED = 3;
 const STATE_SUBJECT_ROTATED = 4;
 const STATE_END = 5;
+
+const interpolator = new Interpolator(40);
 
 let scene, camera, world, clock, subjects, contents, stage, roof, font, mirror, renderer, stats, radius;
 let lights, lightHelpers;
@@ -167,12 +171,12 @@ function addNodes() {
 
     for (let i = 0; i < geometries.length; i++) {
         const node = geometries[i];
-        const angle = Math.PI * 2 / nodes.length * i;
-        const z = radius * Math.cos(angle) - radius;
-        const x = radius * Math.sin(angle);
+        const a = angle * i;
+        const z = radius * Math.cos(a) - radius;
+        const x = radius * Math.sin(a);
         const mesh = new Mesh(node, material);
         mesh.position.set(x, 0, z);
-        mesh.rotation.y = angle;
+        mesh.rotation.y = a;
         subjects.add(mesh);
         giveBody(mesh, RigidBodyType.STATIC);
     }
@@ -255,10 +259,10 @@ function createContent(index) {
     const mesh = new Mesh(node, material);
     mesh.position.set(
         subject.position.x,
-        subject.position.y + 20,
+        subject.position.y + 22,
         subject.position.z
     );
-    mesh.rotation.y = Math.PI / 20;
+    mesh.rotation.y = Math.PI / 18;
     return mesh;
 }
 
@@ -352,19 +356,21 @@ function animate() {
             }
             break;
         case STATE_SUBJECT_DROPPED:
-            const front = subjects.children[index + 1];
-            if (front.rotation.y > 0) {
+            const progress = interpolator.getInterpolation();
+            if (progress <= 1) {
                 for (const child of subjects.children.slice(index + 1)) {
                     const body = bodies.get(child)
                     const mat = body
                         .getRotation()
-                        .appendRotationEq(-0.01, 0, 1, 0);
+                        .appendRotationEq(-(angle * interpolator.getDelta()), 0, 1, 0);
                     const z = radius * mat.e00 - radius;
                     const x = radius * mat.e02;
                     body.setPosition(new Vec3(x, 0, z));
                     body.setRotation(mat);
                 }
+                interpolator.next();
             } else {
+                interpolator.reset();
                 state = STATE_SUBJECT_ROTATED;
             }
             break;
