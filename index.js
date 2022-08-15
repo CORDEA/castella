@@ -11,8 +11,9 @@ import {
     MeshBasicMaterial,
     MeshStandardMaterial,
     PerspectiveCamera,
-    PointLight,
     Scene,
+    SpotLight,
+    SpotLightHelper,
     WebGLRenderer
 } from 'three';
 import {TTFLoader} from "three/examples/jsm/loaders/TTFLoader.js";
@@ -66,7 +67,8 @@ const STATE_SUBJECT_DROPPED = 3;
 const STATE_SUBJECT_ROTATED = 4;
 const STATE_END = 5;
 
-let scene, camera, world, clock, subjects, contents, font, light, mirror, renderer, stats, radius;
+let scene, camera, world, clock, subjects, contents, font, mirror, renderer, stats, radius;
+let lights, lightHelpers;
 let bodies = new WeakMap();
 let index = -1;
 let state = STATE_SUBJECT_ROTATED;
@@ -89,14 +91,15 @@ function init() {
     scene.add(subjects);
     scene.add(contents);
 
-    camera = new PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 500);
-    camera.position.set(0, 5, 30);
+    camera = new PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 100);
+    camera.position.set(0, 5, 40);
     camera.lookAt(0, 0, 0);
 
-    scene.add(new AmbientLight(0xffffff, 0.3));
-    light = new PointLight(0xffffff, 1.2);
-    light.position.y = 20;
-    scene.add(light);
+    scene.add(new AmbientLight(0xffffff, 0.1));
+    lights = [createLight(4), createLight(0), createLight(-4)];
+    lightHelpers = lights.map((e) => new SpotLightHelper(e));
+    lights.forEach((e) => scene.add(e));
+    lightHelpers.forEach((e) => scene.add(e));
 
     renderer = new WebGLRenderer({antialias: true});
     renderer.setPixelRatio(window.devicePixelRatio);
@@ -118,6 +121,14 @@ function init() {
     });
 }
 
+function createLight(x) {
+    const light = new SpotLight(0xffffff, 0.7);
+    light.penumbra = 0.3;
+    light.angle = Math.PI / 6;
+    light.position.set(x, 8, 0);
+    return light;
+}
+
 function addNodes() {
     const material = new MeshStandardMaterial({
         color: 0xc2185b,
@@ -137,7 +148,7 @@ function addNodes() {
     const c = (max * nodes.length) * 1.1;
     radius = c / (2 * Math.PI);
 
-    light.position.z = radius + 15;
+    lights.forEach((e) => e.position.z = radius);
     const padding = param.height * 2 + 3;
     addMirror(radius, padding);
     addStage(radius, padding);
@@ -318,6 +329,7 @@ function animate() {
             }
             break;
     }
+    lightHelpers.forEach((e) => e.update());
     renderer.render(scene, camera);
     stats.update();
 }
