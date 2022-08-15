@@ -84,8 +84,8 @@ function textParam() {
 function init() {
     const container = document.getElementById('container');
     scene = new Scene();
-    scene.background = new Color(0xbdbdbd);
-    scene.fog = new FogExp2(0xbdbdbd, 0.02);
+    scene.background = new Color(0x212121);
+    scene.fog = new FogExp2(0x263238, 0.02);
     subjects = new Group();
     contents = new Group();
     scene.add(subjects);
@@ -172,7 +172,7 @@ function addMirror(radius, padding) {
         clipBias: 0.003,
         textureWidth: window.innerWidth * window.devicePixelRatio,
         textureHeight: window.innerHeight * window.devicePixelRatio,
-        color: 0xbdbdbd
+        color: 0xe0e0e0
     });
     mirror.position.y = -5;
     mirror.position.z = -radius;
@@ -181,12 +181,12 @@ function addMirror(radius, padding) {
 }
 
 function addStage(radius, padding) {
-    const height = 20;
+    const height = 0.5;
     const r = radius + padding;
     const cylinder = new CylinderGeometry(r, r, height, 64);
     cylinder.computeBoundingBox();
     const material = new MeshBasicMaterial({
-        color: 0xffffff,
+        color: 0x212121,
     });
     const mesh = new Mesh(cylinder, material);
     const outer = new BoxGeometry(r * 2, height, r * 2);
@@ -217,9 +217,10 @@ function createContent(index) {
     const mesh = new Mesh(node, material);
     mesh.position.set(
         subject.position.x,
-        subject.position.y + 15,
+        subject.position.y + 20,
         subject.position.z
     );
+    mesh.rotation.y = Math.PI / 20;
     return mesh;
 }
 
