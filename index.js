@@ -95,15 +95,21 @@ const STATE_SUBJECT_DROPPED = 3;
 const STATE_SUBJECT_ROTATED = 4;
 const STATE_END = 5;
 
-const interpolator = new Interpolator(40);
+const ACTION_CONTENT_CLICK = 0;
+const ACTION_CONTENT_CLICKED = 1;
+
+const rotateInterpolator = new Interpolator(40);
+const actionInterpolator = new Interpolator(10);
 
 let camera, world, raycaster, clock, font, mirror, renderer, stats, radius;
 let scene, subjects, clickables, stage, roof, cord;
 let lights, lightHelpers;
+let selecting = null;
 let pointer = new Vector2();
 let bodies = new WeakMap();
 let index = -1;
 let state = STATE_SUBJECT_ROTATED;
+let action = ACTION_CONTENT_CLICKED;
 
 function textParam() {
     return {
@@ -329,6 +335,10 @@ function observeResize() {
 
 function observeEvents(e) {
     e.addEventListener('click', function () {
+        if (selecting) {
+            action = ACTION_CONTENT_CLICK;
+            return;
+        }
         if (state === STATE_SUBJECT_ROTATED) {
             index += 1;
             state = STATE_CONTENT_DROP;
@@ -374,8 +384,10 @@ function animate() {
     if (intersects.length > 0) {
         const intersect = intersects[0];
         const mesh = intersect.object;
+        selecting = mesh;
         mesh.material.color.setHex(colors.selectedText);
     } else {
+        selecting = null;
         clickables.children.forEach((e) => e.material.color.setHex(colors.text));
     }
     switch (state) {
@@ -399,24 +411,38 @@ function animate() {
             }
             break;
         case STATE_SUBJECT_DROPPED:
-            const progress = interpolator.getInterpolation();
+            const progress = rotateInterpolator.getInterpolation();
             if (progress <= 1) {
                 for (const child of subjects.children.slice(index + 1)) {
                     const body = bodies.get(child)
                     const mat = body
                         .getRotation()
-                        .appendRotationEq(-(angle * interpolator.getDelta()), 0, 1, 0);
+                        .appendRotationEq(-(angle * rotateInterpolator.getDelta()), 0, 1, 0);
                     const z = radius * mat.e00 - radius;
                     const x = radius * mat.e02;
                     body.setPosition(new Vec3(x, 0, z));
                     body.setRotation(mat);
                 }
-                interpolator.next();
+                rotateInterpolator.next();
             } else {
-                interpolator.reset();
+                rotateInterpolator.reset();
                 state = STATE_SUBJECT_ROTATED;
             }
             break;
+    }
+    if (action === ACTION_CONTENT_CLICK) {
+        const progress = actionInterpolator.getInterpolation();
+        if (progress <= 1 && selecting) {
+            const body = bodies.get(selecting);
+            body.setPosition(
+                body.getPosition()
+                    .add3Eq(0, 0, -actionInterpolator.getDelta())
+            );
+            actionInterpolator.next();
+        } else {
+            actionInterpolator.reset();
+            action = ACTION_CONTENT_CLICKED;
+        }
     }
     lightHelpers.forEach((e) => e.update());
     renderer.render(scene, camera);
