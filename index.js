@@ -15,9 +15,11 @@ import {
     MeshBasicMaterial,
     MeshStandardMaterial,
     PerspectiveCamera,
+    Raycaster,
     Scene,
     SpotLight,
     SpotLightHelper,
+    Vector2,
     WebGLRenderer
 } from 'three';
 import {TTFLoader} from "three/examples/jsm/loaders/TTFLoader.js";
@@ -44,26 +46,32 @@ const nodes = [
     {
         subject: 'Hello World',
         content: 'Hello World',
+        clickable: true
     },
     {
         subject: 'Hello World',
         content: 'Hello World',
+        clickable: true
     },
     {
         subject: 'Hello World',
         content: 'Hello World',
+        clickable: false
     },
     {
         subject: 'Hello World',
         content: 'Hello World',
+        clickable: true
     },
     {
         subject: 'Hello World',
         content: 'Hello World',
+        clickable: false
     },
     {
         subject: 'Hello World',
         content: 'Hello World',
+        clickable: false
     },
 ];
 const colors = {
@@ -71,7 +79,8 @@ const colors = {
     fog: 0x757575,
     light: 0xffffff,
     stage: 0x90a4ae,
-    text: 0xc51162,
+    text: 0xe91e63,
+    selectedText: 0x560027,
     cord: [
         0, 0, 0,
         1, 0, 0
@@ -88,8 +97,10 @@ const STATE_END = 5;
 
 const interpolator = new Interpolator(40);
 
-let scene, camera, world, clock, subjects, contents, stage, roof, cord, font, mirror, renderer, stats, radius;
+let camera, world, raycaster, clock, font, mirror, renderer, stats, radius;
+let scene, subjects, clickables, stage, roof, cord;
 let lights, lightHelpers;
+let pointer = new Vector2();
 let bodies = new WeakMap();
 let index = -1;
 let state = STATE_SUBJECT_ROTATED;
@@ -108,9 +119,9 @@ function init() {
     scene.background = new Color(colors.background);
     scene.fog = new FogExp2(colors.fog, 0.02);
     subjects = new Group();
-    contents = new Group();
+    clickables = new Group();
     scene.add(subjects);
-    scene.add(contents);
+    scene.add(clickables);
 
     camera = new PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 100);
     camera.position.set(0, 5, 40);
@@ -127,6 +138,7 @@ function init() {
     renderer.setSize(window.innerWidth, window.innerHeight);
     container.appendChild(renderer.domElement);
 
+    raycaster = new Raycaster();
     world = new World();
     clock = new Clock();
     stats = new Stats();
@@ -143,7 +155,7 @@ function init() {
 }
 
 function createLight(x) {
-    const light = new SpotLight(colors.light, 0.7);
+    const light = new SpotLight(colors.light, 0.5);
     light.penumbra = 0.3;
     light.angle = Math.PI / 6;
     light.position.set(x, 8, 0);
@@ -245,16 +257,17 @@ function addCord() {
 }
 
 function createContent(index) {
+    const node = nodes[index];
     const subject = subjects.children[index];
-    const node = new TextGeometry(nodes[index].content, textParam());
-    node.computeBoundingBox();
-    node.center();
+    const geometry = new TextGeometry(node.content, textParam());
+    geometry.computeBoundingBox();
+    geometry.center();
     const material = new MeshStandardMaterial({
         color: colors.text,
         metalness: 0.3,
         roughness: 0.6
     });
-    const mesh = new Mesh(node, material);
+    const mesh = new Mesh(geometry, material);
     mesh.position.set(
         subject.position.x,
         subject.position.y + 22,
@@ -324,6 +337,10 @@ function observeEvents(e) {
             state = STATE_SUBJECT_DROP;
         }
     });
+    e.addEventListener('pointermove', function (e) {
+        pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
+        pointer.y = -(e.clientY / window.innerHeight) * 2 + 1;
+    });
 }
 
 function animate() {
@@ -332,10 +349,15 @@ function animate() {
     if (delta > 0) {
         world.step(delta);
     }
-    for (const child of subjects.children.concat(contents.children).concat([stage, roof])) {
+    const children = scene.children
+        .concat(subjects.children)
+        .concat(clickables.children);
+    for (const child of children) {
         const body = bodies.get(child);
-        child.position.copy(body.getPosition());
-        child.quaternion.copy(body.getOrientation());
+        if (body) {
+            child.position.copy(body.getPosition());
+            child.quaternion.copy(body.getOrientation());
+        }
     }
     cord.geometry.setAttribute(
         'position',
@@ -347,10 +369,23 @@ function animate() {
             3
         ),
     );
+    raycaster.setFromCamera(pointer, camera);
+    const intersects = raycaster.intersectObjects(clickables.children);
+    if (intersects.length > 0) {
+        const intersect = intersects[0];
+        const mesh = intersect.object;
+        mesh.material.color.setHex(colors.selectedText);
+    } else {
+        clickables.children.forEach((e) => e.material.color.setHex(colors.text));
+    }
     switch (state) {
         case STATE_CONTENT_DROP:
             const content = createContent(index);
-            contents.add(content);
+            if (nodes[index].clickable) {
+                clickables.add(content);
+            } else {
+                scene.add(content);
+            }
             giveBody(content, RigidBodyType.DYNAMIC);
             state = STATE_CONTENT_DROPPED;
             break;
