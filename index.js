@@ -6,6 +6,8 @@ import {
     Clock,
     Color,
     CylinderGeometry,
+    DodecahedronGeometry,
+    DoubleSide,
     Float32BufferAttribute,
     FogExp2,
     Group,
@@ -75,10 +77,11 @@ const nodes = [
     },
 ];
 const colors = {
-    background: 0xeeeeee,
+    background: 0x000000,
     fog: 0x757575,
     light: 0xffffff,
     stage: 0x90a4ae,
+    wall: 0xffffff,
     text: 0xe91e63,
     selectedText: 0x560027,
     cord: [
@@ -123,17 +126,17 @@ function init() {
     const container = document.getElementById('container');
     scene = new Scene();
     scene.background = new Color(colors.background);
-    scene.fog = new FogExp2(colors.fog, 0.02);
+    scene.fog = new FogExp2(colors.fog, 0.013);
     subjects = new Group();
     clickables = new Group();
     scene.add(subjects);
     scene.add(clickables);
 
-    camera = new PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 100);
+    camera = new PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 500);
     camera.position.set(0, 5, 40);
     camera.lookAt(0, 0, 0);
 
-    scene.add(new AmbientLight(colors.light, 0.1));
+    scene.add(new AmbientLight(colors.light, 0.7));
     lights = [createLight(4), createLight(0), createLight(-4)];
     lightHelpers = lights.map((e) => new SpotLightHelper(e));
     lights.forEach((e) => scene.add(e));
@@ -150,6 +153,15 @@ function init() {
     stats = new Stats();
     container.appendChild(stats.dom);
 
+    const geometry = new DodecahedronGeometry(60);
+    const material = new MeshStandardMaterial({
+        color: colors.wall,
+        side: DoubleSide
+    });
+    const mesh = new Mesh(geometry, material);
+    mesh.name = 'wall'
+    scene.add(mesh);
+
     observeResize();
     observeEvents(container);
     const loader = new TTFLoader();
@@ -163,8 +175,9 @@ function init() {
 function createLight(x) {
     const light = new SpotLight(colors.light, 0.5);
     light.penumbra = 0.3;
+    light.distance = 200;
     light.angle = Math.PI / 6;
-    light.position.set(x, 8, 0);
+    light.position.set(x, 10, 0);
     return light;
 }
 
@@ -191,6 +204,7 @@ function addNodes() {
     const padding = param.height * 2 + 3;
     stage = createStage(padding);
     roof = createRoof();
+    scene.getObjectByName('wall').position.z = -radius;
     addCord();
     scene.add(stage);
     scene.add(roof);
@@ -243,7 +257,7 @@ function createRoof() {
     });
     box.computeBoundingBox();
     const mesh = new Mesh(box, material);
-    mesh.position.y = 25;
+    mesh.position.y = 40;
     mesh.position.z = -radius;
     return mesh;
 }
